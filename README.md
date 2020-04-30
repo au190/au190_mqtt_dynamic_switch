@@ -13,6 +13,7 @@ https://github.com/au190/au190_mqtt_dynamic_switch
 
 
 #### Info
+```
 Working only with Tasmota(https://github.com/arendst/Tasmota) software. 
 Tested:
 Tasmota v7.1.2
@@ -33,17 +34,18 @@ Lovelace
 mode	storage
 resources	7
 views	5
-
+```
 
 ### Count Down
 ```
-Enable | Disable
-  0     = 0,1 sec
-  1 sec - 18 hours (64 800 sec)
+This feauture can be: Enable | Disable
+Count Down timer can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
+
+  
 ```
 ### Scheduler
-Allowed for setup only hours and minutes.
-
+Start time: Can be set only hours and minutes.
+Duration: Can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
 
 
 ### TODO
