@@ -8,6 +8,7 @@ https://github.com/au190/au190_mqtt_dynamic_switch
 
 **Example**
 Lovelace UI:<br />
+<img src='https://raw.githubusercontent.com/au190/au190_mqtt_dynamic_switch/master/1.jpg'/>
 [![Watch the video](https://img.youtube.com/vi/D6Lkr_acK_s/0.jpg)](https://www.youtube.com/watch?v=D6Lkr_acK_s "Watch the video")
 
 ### Count Down
