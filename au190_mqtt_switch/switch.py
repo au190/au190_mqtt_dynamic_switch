@@ -417,7 +417,7 @@ class Au190_MqttSwitch(
         """
 
         if self.enable_countDown:
-            new_pulseTime = self._countDown
+            new_pulseTime = self._getDuration(self._countDown)
         else:
             new_pulseTime = 0
 
@@ -499,7 +499,7 @@ class Au190_MqttSwitch(
                 starttime = time.strptime(start_time, '%H:%M')  # '%H:%M:%S'
 
                 if starttime.tm_hour == acction_time.hour and starttime.tm_min == acction_time.minute:
-                    duration = entry['duration']
+                    duration = self._getDuration(entry['duration'])
                     break
 
             if duration != None:
@@ -554,7 +554,6 @@ class Au190_MqttSwitch(
 
             if self.my_hasattr_Idx(self._attrs["au190"], 'scheduler') and self._attrs["au190"]['enable_scheduler']:
                 for entry in self._attrs["au190"]['scheduler']:
-                    #duration = entry['duration']
                     start_time = entry['start_time']
                     x = time.strptime(start_time, '%H:%M') #'%H:%M:%S'
                     #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s:%s][%s] [%s]", x.tm_hour, x.tm_min, duration, entry)
@@ -658,3 +657,15 @@ class Au190_MqttSwitch(
         return ret
 
 
+    '''
+        Tasmota time 0 - infinite
+        Force to 0,1 sec
+        
+        0 / OFF = disable use of PulseTime for Relay<x>
+        1..111 = set PulseTime for Relay<x> in 0.1 second increments
+        112..64900 = set PulseTime for Relay<x>, offset by 100, in 1 second increments. Add 100 to desired interval in seconds, e.g., PulseTime 113 = 13 seconds and PulseTime 460 = 6 minutes (i.e., 360 seconds)
+    '''
+    def _getDuration(self, duration):
+        if duration == 0:
+            duration = 1
+        return duration
