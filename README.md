@@ -3,18 +3,35 @@
 
 You can use as a count down switch, you can Trun On automatically using schedule time from the GUI.
 This component contains the server componenet and the client component.
-
 https://github.com/au190/au190_mqtt_dynamic_switch
 
-#### Installation
-1. Copy the au190_mqtt_switch dir into $homeassistant_config_dir/custom_components/<br />
-2. To update the frontend use: https://github.com/au190/au190_homeassistant_frontend
 
+**Example**
+Lovelace UI:<br />
+<img src='https://raw.githubusercontent.com/au190/au190_mqtt_dynamic_switch/master/2.jpg'/>
+<img src='https://raw.githubusercontent.com/au190/au190_mqtt_dynamic_switch/master/1.jpg'/>
+<img src='https://raw.githubusercontent.com/au190/au190_mqtt_dynamic_switch/master/1.mp4'/>
+
+
+### Count Down
+```
+This feauture can be: Enable | Disable
+Count Down timer can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
+
+```
+
+
+### Scheduler
+```
+Start time: Can be set only hours and minutes.
+Duration: Can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
+```
 
 
 #### Info
 ```
-Working only with Tasmota(https://github.com/arendst/Tasmota) software. 
+- [ ] ⚠️ Working only with MQTT
+- [ ] ⚠️ Working only with Tasmota(https://github.com/arendst/Tasmota) software. 
 Tested:
 Tasmota v7.1.2
 Os: Ubuntu 19.10
@@ -36,23 +53,13 @@ resources	7
 views	5
 ```
 
-### Count Down
-```
-This feauture can be: Enable | Disable
-Count Down timer can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
 
-  
-```
-### Scheduler
-Start time: Can be set only hours and minutes.
-Duration: Can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
+#### Installation
+1. Copy the au190_mqtt_switch dir into $homeassistant_config_dir/custom_components/<br />
+2. To update the frontend use: https://github.com/au190/au190_homeassistant_frontend
 
 
-### TODO
-- [ ] Allow changing of Opration mode on the default config.
-- [ ] ⚠️ Working only with Tasmota
-
-
+#### 1. Server side configuration:
 
 **Options**
 
@@ -73,13 +80,7 @@ Duration: Can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
 | payload_not_available | string | optional | "Online"
 
 
-**Example**
-Lovelace UI:<br />
-<img src='https://raw.githubusercontent.com/au190/au190_mqtt_dynamic_switch/master/1.jpg'/>
-<img src='https://raw.githubusercontent.com/au190/au190_mqtt_dynamic_switch/master/1.mp4'/>
-
-Server side configuration:
-#### configuration.yaml
+configuration.yaml
 
 ```
 switch:
@@ -107,13 +108,8 @@ switch:
 ```
 
 
-
-
 #### Client side configuration (mandatory):
 For the popup menu I had to create new fronted. You have to replace the with this: https://github.com/au190/au190_homeassistant_frontend
-
-
-
 
 
 #### Client side configuration (this is optional):
@@ -124,8 +120,7 @@ resources:
 
   - type: module
     url: /local/community/au190-mqtt_card/au190-mqtt_card.js
-    
-    
+
     
   entity: switch.x_1
   icon: 'mdi:lightbulb'
