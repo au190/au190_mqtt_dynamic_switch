@@ -52,8 +52,8 @@ views	5
 
 
 #### Installation
-1. Copy the au190_mqtt_switch dir into $homeassistant_config_dir/custom_components/<br />
-2. To update the frontend use: https://github.com/au190/au190_homeassistant_frontend
+1.  Copy the au190_mqtt_switch dir into $homeassistant_config_dir/custom_components/ <br/>
+2.  To update the frontend use: https://github.com/au190/au190_homeassistant_frontend
 
 
 #### 1. Server side configuration:
