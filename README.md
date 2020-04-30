@@ -35,11 +35,12 @@ resources	7
 views	5
 
 
-### Count Down 
+### Count Down
+```
 Enable | Disable
   0     = 0,1 sec
   1 sec - 18 hours (64 800 sec)
-
+```
 ### Scheduler
 Allowed for setup only hours and minutes.
 
@@ -49,15 +50,12 @@ Allowed for setup only hours and minutes.
 - [ ] Allow changing of Opration mode on the default config.
 - [ ] ⚠️ Working only with Tasmota
 
-*** How to set the GUI
-
-
 
 
 **Options**
 
 | Name | Type | Default | Example | Description
-| ---- | ---- | ------- | -----------
+| ---- | ---- | ------- | ----------- | -----------
 | platform | string | **Required** | `au190_mqtt_switch`
 | name | string | optional | 
 | icon | string | optional | mdi:power
