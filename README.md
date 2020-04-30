@@ -13,7 +13,7 @@ Lovelace UI:<br />
 
 ### Count Down
 ```
-This feauture can be: Enable | Disable
+This feauture can be: Enable|Disable
 Count Down timer can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
 ```
 
