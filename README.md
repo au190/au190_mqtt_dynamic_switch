@@ -1,10 +1,10 @@
 # Dynamic mqtt switch for Homeassistant
 
-```
+
 You can use as a count down switch, you can Trun On automatically using schedule time from the GUI.
 This component contains the server componenet and the client component.
 https://github.com/au190/au190_mqtt_dynamic_switch
-```
+
 
 **Example**
 Lovelace UI:<br />
