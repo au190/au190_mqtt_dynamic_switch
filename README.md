@@ -84,13 +84,20 @@ switch:
 
 Lovelace UI configuration
 
+
+Adding the resource to Client:
+
 ```
 resources:
 
   - type: module
     url: /local/community/au190-mqtt_card/au190-mqtt_card.js
+```
 
-    
+
+Card configuration:
+
+```
   entity: switch.x_1
   icon: 'mdi:lightbulb'
   name: Test
