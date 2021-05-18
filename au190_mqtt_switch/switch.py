@@ -3,6 +3,7 @@ import logging
 import sys
 import json
 import voluptuous as vol
+import datetime
 import time
 import homeassistant.helpers.config_validation as cv
 import os
@@ -14,6 +15,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import ConfigType, HomeAssistantType
 from homeassistant.helpers.event import async_track_time_change
+
 
 from homeassistant.const import (
     CONF_DEVICE,
@@ -30,7 +32,6 @@ from homeassistant.components.mqtt import (
     CONF_QOS,
     CONF_RETAIN,
     CONF_STATE_TOPIC,
-    CONF_UNIQUE_ID,
     MqttAttributes,
     MqttAvailability,
     MqttDiscoveryUpdate,
@@ -39,17 +40,15 @@ from homeassistant.components.mqtt import (
 )
 
 from . import (
-    SERVICE_ATTRIBUTES,
-    SERVICE_GET_INFO,
+    SERVICE_AU190,
+    DOMAIN
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "au190_mqtt_switch"
-
 SERVICE_GET_INFO = "get_info"
 SERVICE_SET_TIMERS = "set_timers"
-JSON_FILE = "_schedule_data.json"
+JSON_FILE = "_data.json"
 JSON_DIR = "au190"
 
 DEFAULT_NAME = "au190 MQTT Switch"
@@ -60,20 +59,10 @@ CONF_STATE_ON = "state_on"
 CONF_STATE_OFF = "state_off"
 
 
-CONF_CMND_PULSE_TIME = "command_pulse_time"
-CONF_STATE_PULSE_TIME = "state_pulse_time"
-CONF_TEMPLATE_PULSE_TIME = "template_pulse_time"
-CONF_CMND_INFO = "command_info"
-CONF_STATE_INFO = "state_info"
 
 TOPIC_KEYS = (
     CONF_COMMAND_TOPIC,
     CONF_STATE_TOPIC,
-    CONF_CMND_PULSE_TIME,
-    CONF_STATE_PULSE_TIME,
-    CONF_TEMPLATE_PULSE_TIME,
-    CONF_CMND_INFO,
-    CONF_STATE_INFO,
 )
 
 
@@ -86,14 +75,8 @@ PLATFORM_SCHEMA = (
             vol.Optional(CONF_OPTIMISTIC, default=DEFAULT_OPTIMISTIC): cv.boolean,
             vol.Optional(CONF_PAYLOAD_OFF, default=DEFAULT_PAYLOAD_OFF): cv.string,
             vol.Optional(CONF_PAYLOAD_ON, default=DEFAULT_PAYLOAD_ON): cv.string,
-            vol.Optional(CONF_CMND_PULSE_TIME): cv.string,
-            vol.Optional(CONF_STATE_PULSE_TIME): cv.string,
-            vol.Optional(CONF_STATE_INFO): cv.string,
-            vol.Optional(CONF_TEMPLATE_PULSE_TIME): cv.template,
-            vol.Optional(CONF_CMND_INFO): cv.string,
             vol.Optional(CONF_STATE_OFF): cv.string,
             vol.Optional(CONF_STATE_ON): cv.string,
-            vol.Optional(CONF_UNIQUE_ID): cv.string,
         }
     )
     .extend(mqtt.MQTT_AVAILABILITY_SCHEMA.schema)
@@ -138,18 +121,17 @@ async def _async_setup_entity(hass, config, async_add_entities, config_entry=Non
     async def async_service_get_data(service_name, service_data):
         """Handle the service call."""
         try:
-            attr = dict(service_data)
+            kwargs = dict(service_data)
             entity_id = service_data.get('entity_id')
 
-            #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s][%s][%s]", service_name, entity_id, attr)
+            #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s][%s][%s]", service_name, entity_id, kwargs)
 
             for device in devices:
                 if device.entity_id == entity_id :
-                    #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "] [%s][%s][%s]", device.entity_id, entity_id, attr)
-                    if service_name == SERVICE_ATTRIBUTES:
-                        await device.async_set_attributes(attr)
-                    elif service_name == SERVICE_GET_INFO:
-                        await device._reqInfo(attr)
+                    #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "] [%s][%s][%s]", device.entity_id, entity_id, kwargs)
+                    if service_name == SERVICE_AU190:
+                        await device.async_au190(**kwargs)
+
 
 
         except Exception as e:
@@ -178,9 +160,9 @@ class Au190_MqttSwitch(
         self._state_on = None
         self._state_off = None
         self._optimistic = None
-        self._unique_id = config.get(CONF_UNIQUE_ID)
 
         # au190
+        self._switch = {}  # Holds local data
         self._filename = None
         self.enable_countDown: bool = False
         self._countDown = 0
@@ -207,7 +189,9 @@ class Au190_MqttSwitch(
         await super().async_added_to_hass()
         await self._subscribe_topics()
         await self._load_from_file()
-        await self._reqInfo("")
+        attr = {}
+        attr["fc"] = 3
+        await self.async_au190(**attr)
 
     async def discovery_update(self, discovery_payload):
         """Handle updated discovery message."""
@@ -221,14 +205,83 @@ class Au190_MqttSwitch(
 
     async def _create_data(self):
         try:
-
             # Attr config
-            self._attrs.update({"au190": {"type":1}})
-            self._attrs["au190"].update({"status": []})
+            self._attrs.update({"au190": {"status": []}})
+            self._attrs.update({'i': {}})  # For info
             self._attrs["au190"].update({"enable_countDown": False})
-            self._attrs["au190"].update({"countDown": 20})
+            self._attrs["au190"].update({"countDown": 400})
             self._attrs["au190"].update({"enable_scheduler": False})
             self._attrs["au190"].update({"scheduler": []})
+
+            state_info_list = []
+
+            '''
+                Command PulseTime is working with cmnd/PulseTime 
+
+                10:21:38 CMD: PulseTime 10
+                10:21:38 MQT: stat/basic/RESULT = {"PulseTime1":{"Set":10,"Remaining":10}}
+
+            '''
+            cmnd_pulseTime = self._config.get(CONF_COMMAND_TOPIC).replace("POWER", "PulseTime")
+            self._switch.update({"command_pulse_time": cmnd_pulseTime})
+
+            '''
+                PulseTime payload message
+            '''
+            state_pulseTime = self.conv_power_to_pulseTime(1, self._config.get(CONF_STATE_TOPIC))
+            self._switch.update({"state_pulse_times_idx": state_pulseTime})
+            '''
+            
+                Stat PulseTime event message.
+                This msg is different event msg for PulseTime  -> stat/basic/RESULT = {"PulseTime1":{"Set":220,"Remaining":220}}
+                
+                10:21:38 CMD: PulseTime 10
+                10:21:38 MQT: stat/basic/RESULT = {"PulseTime1":{"Set":10,"Remaining":10}}
+                
+            '''
+            state_pulseTime = self._config.get(CONF_STATE_TOPIC)
+            tidx = state_pulseTime.rfind("/")
+            state_pulseTime = state_pulseTime[0:tidx] + '/RESULT'
+            self._switch.update({"state_pulse_time": state_pulseTime})
+
+            '''
+                command_info: "cmnd/basic/Status"
+            '''
+            command_info = state_pulseTime.replace("RESULT", "Status")
+            command_info = command_info.replace("stat", "cmnd")
+            self._switch.update({"command_info": command_info})
+
+            '''
+                Stat Info event message.
+                
+                state_info: 'stat/basic/STATUS5'
+                state_info: 'stat/basic/STATUS11'
+                
+                state_info: tele/basic/STATE
+            '''
+            state_info = command_info.replace("cmnd", "stat")
+            state_info = state_info.replace("Status", "STATUS5")
+            if state_info not in state_info_list:
+                state_info_list.append(state_info)
+
+            state_info = state_info.replace("STATUS5", "STATUS11")
+            if state_info not in state_info_list:
+                state_info_list.append(state_info)
+
+            state_info = state_info.replace("stat", "tele")
+            state_info = state_info.replace("STATUS11", "STATE")
+            if state_info not in state_info_list:
+                state_info_list.append(state_info)
+
+            self._switch.update({"state_info": state_info_list})  # Calculate events msg for info.
+
+            '''
+               Stat Info data
+            '''
+            t_topic = self.conv_power_to_pulseTime(3, state_info)
+            self._attrs['i'].update({t_topic: {}})
+
+            #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> %s [%s]", self._switch, self._switch)
 
         except Exception as e:
             _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: " + str(e))
@@ -262,12 +315,17 @@ class Au190_MqttSwitch(
         qos = self._config[CONF_QOS]
 
         def add_subscription(topics, topic, msg_callback):
-            if self._topic[topic] is not None:
-                topics[topic] = {
-                    "topic": self._topic[topic],
-                    "msg_callback": msg_callback,
-                    "qos": qos,
-                }
+
+            if self.my_hasattr(topics, topic):
+                _LOGGER.fatal("[" + sys._getframe().f_code.co_name + "]--> [Yaml config is not good. This topic [%s] is aleardy assigned to a function. You have to use different topic for each sensor !]", topic)
+                return False
+
+            topics[topic] = {
+                "topic": topic,
+                "msg_callback": msg_callback,
+                "qos": qos,
+            }
+            return True
 
         def render_template(msg, template_name):
 
@@ -279,7 +337,7 @@ class Au190_MqttSwitch(
             return payload
 
         @callback
-        def state_message_received(msg):
+        def state_message_zone(msg):
             """Handle new MQTT state messages."""
 
             payload = msg.payload
@@ -292,76 +350,113 @@ class Au190_MqttSwitch(
             elif payload == self._state_off:
                 self._state = False
 
-            self.async_write_ha_state()
+            self.myasync_write_ha_state()
 
-        if self._config.get(CONF_STATE_TOPIC) is None:
-            # Force into optimistic mode.
-            self._optimistic = True
-        else:
 
-            add_subscription(topics, CONF_STATE_TOPIC, state_message_received)
+        '''
+           State topic PulseTime for zones
 
-        if self._optimistic:
-            last_state = await self.async_get_last_state()
-            if last_state:
-                self._state = last_state.state == STATE_ON
+           stat/basic/RESULT = {"PulseTime1":{"Set":220,"Remaining":220}}
 
+        '''
         @callback
-        def state_PulseTime_received(msg):
+        def state_message_pulsetime(msg):
             """Handle new MQTT state messages."""
-
             try:
-                payload = None
-                pL_o = json.loads(msg.payload)  # decode json data
-                #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s] [%s] [%s]", self.entity_id, msg, pL_o)
+                payload = msg.payload
+                topic = msg.topic
+                pL_o = {}
+                #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s][%s][%s]", topic, payload, msg)
 
-                if self.my_hasattr_Idx(pL_o, 'PulseTime'):
+                if msg.payload[0] == "{":  # is json ?
 
-                    payload = render_template(msg, CONF_TEMPLATE_PULSE_TIME)
-
-                    if(payload == "unknown"):
-                        return
-
-                    self._pulseTime = int(payload)
-
-                    # turn ON for while
-                    self._publish(CONF_COMMAND_TOPIC, self._state_on )
-
-                    # _LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> %s [%s]", msg, payload)
-
-
-            except Exception as e:
-                _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: [%s][%s]", msg, str(e))
-
-        add_subscription(topics, CONF_STATE_PULSE_TIME, state_PulseTime_received)
-
-        @callback
-        def state_Info_received(msg):
-            """Handle new MQTT state messages."""
-
-            #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s]", msg)
-            try:
-                if msg.payload[0] == "{":
                     pL_o = json.loads(msg.payload)  # decode json data
+                    first_element = list(pL_o.keys())[0]
+                    first_elementidx = topic + '/' + first_element
 
-                    if self.my_hasattr_Idx(pL_o, 'StatusNET'):
-                        self._attrs.update({'IpAddress': pL_o['StatusNET']['IPAddress']})
-                    if self.my_hasattr_Idx(pL_o, 'StatusSTS'):
-                        self._attrs.update({'SSId': pL_o['StatusSTS']['Wifi']['SSId'] + " (" + str(pL_o['StatusSTS']['Wifi']['RSSI']) + "%)"})
-                        self._attrs.update({'Uptime': pL_o['StatusSTS']['Uptime'] })
-                        self._attrs.update({'Time': pL_o['StatusSTS']['Time']})
+                    if self._switch["state_pulse_times_idx"] == first_elementidx:
 
-                    self.async_write_ha_state()
+                        _LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s]", msg)
+
+                        self._pulseTime = pL_o[first_element]["Set"]
+
+                        '''
+                            Send turn ON msg to the zone
+                        '''
+                        self._publish(self._config[CONF_COMMAND_TOPIC], self._state_on)
 
             except Exception as e:
                 _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: " + str(e))
 
-        add_subscription(topics, CONF_STATE_INFO, state_Info_received)
+        @callback
+        def state_message_info(msg):
+            """Handle new MQTT state messages."""
+            '''
+            12:53:44 MQT: stat/basic/STATUS = {"Status":{"Module":1,"FriendlyName":["Basic"],"Topic":"basic","ButtonTopic":"0","Power":0,"PowerOnState":0,"LedState":1,"LedMask":"FFFF","SaveData":1,"SaveState":1,"SwitchTopic":"0","SwitchMode":[1,0,0,0,0,0,0,0],"ButtonRetain":0,"SwitchRetain":0,"SensorRetain":0,"PowerRetain":0}}
+            12:53:44 MQT: stat/basic/STATUS1 = {"StatusPRM":{"Baudrate":115200,"GroupTopic":"tasmotas","OtaUrl":"http://thehackbox.org/tasmota/release/tasmota.bin","RestartReason":"Power on","Uptime":"0T03:18:43","StartupUTC":"2021-05-03T08:35:01","Sleep":50,"CfgHolder":4621,"BootCount":12,"SaveCount":324,"SaveAddress":"F8000"}}
+            12:53:44 MQT: stat/basic/STATUS2 = {"StatusFWR":{"Version":"7.2.0(tasmota)","BuildDateTime":"2020-02-10T18:26:43","Boot":31,"Core":"2_6_1","SDK":"2.2.2-dev(5ab15d1)","Hardware":"ESP8266EX","CR":"273/1151"}}
+            12:53:45 MQT: stat/basic/STATUS3 = {"StatusLOG":{"SerialLog":2,"WebLog":2,"MqttLog":0,"SysLog":0,"LogHost":"","LogPort":514,"SSId":["Roby",""],"TelePeriod":300,"Resolution":"558180C0","SetOption":["0000A009","2805C8000100060000005A00000000000000","00008000","00000000"]}}
+            12:53:45 MQT: stat/basic/STATUS4 = {"StatusMEM":{"ProgramSize":594,"Free":344,"Heap":23,"ProgramFlashSize":1024,"FlashSize":1024,"FlashChipId":"14405E","FlashMode":3,"Features":["00000809","8FDAE397","003683A0","22B617CD","01001BC0","00007881"],"Drivers":"1,2,3,4,5,6,7,8,9,10,12,16,18,19,20,21,22,24,26,29","Sensors":"1,2,3,4,5,6,7,8,9,10,14,15,17,18,20,22,26,34"}}
+            12:53:45 MQT: stat/basic/STATUS5 = {"StatusNET":{"Hostname":"basic-5911","IPAddress":"192.168.2.45","Gateway":"192.168.2.1","Subnetmask":"255.255.255.0","DNSServer":"192.168.2.190","Mac":"B4:E6:2D:3A:B7:17","Webserver":2,"WifiConfig":4}}
+            12:53:45 MQT: stat/basic/STATUS6 = {"StatusMQT":{"MqttHost":"192.168.2.190","MqttPort":1883,"MqttClientMask":"Basic","MqttClient":"Basic","MqttUser":"au190","MqttCount":1,"MAX_PACKET_SIZE":1000,"KEEPALIVE":30}}
+            12:53:45 MQT: stat/basic/STATUS7 = {"StatusTIM":{"UTC":"Mon May 03 11:53:45 2021","Local":"Mon May 03 12:53:45 2021","StartDST":"Sun Mar 28 02:00:00 2021","EndDST":"Sun Oct 31 03:00:00 2021","Timezone":"+01:00","Sunrise":"05:25","Sunset":"20:08"}}
+            12:53:45 MQT: stat/basic/STATUS10 = {"StatusSNS":{"Time":"2021-05-03T12:53:45"}}
+            12:53:45 MQT: stat/basic/STATUS11 = {"StatusSTS":{"Time":"2021-05-03T12:53:45","Uptime":"0T03:18:44","UptimeSec":11924,"Heap":24,"SleepMode":"Dynamic","Sleep":50,"LoadAvg":19,"MqttCount":1,"POWER":"OFF","Wifi":{"AP":1,"SSId":"Roby","BSSId":"84:16:F9:D3:3C:80","Channel":2,"RSSI":64,"Signal":-68,"LinkCount":1,"Downtime":"0T00:00:06"}}}
+            12:55:13 MQT: tele/basic/STATE = {"Time":"2021-05-03T12:55:13","Uptime":"0T03:20:12","UptimeSec":12012,"Heap":24,"SleepMode":"Dynamic","Sleep":50,"LoadAvg":19,"MqttCount":1,"POWER":"OFF","Wifi":{"AP":1,"SSId":"Roby","BSSId":"84:16:F9:D3:3C:80","Channel":2,"RSSI":60,"Signal":-70,"LinkCount":1,"Downtime":"0T00:00:06"}}
 
 
-        self._sub_state = await subscription.async_subscribe_topics(
-            self.hass, self._sub_state, topics
-        )
+            15:58:19 MQT: tele/basic/STATE = {"Time":"2021-05-05T15:58:19","Uptime":"0T05:20:13","UptimeSec":19213,"Heap":24,"SleepMode":"Dynamic","Sleep":50,"LoadAvg":25,"MqttCount":1,"POWER":"OFF","Wifi":{"AP":1,"SSId":"Roby","BSSId":"84:16:F9:D3:3C:80","Channel":2,"RSSI":58,"Signal":-71,"LinkCount":1,"Downtime":"0T00:00:07"}}
+
+            '''
+            # _LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s]", msg)
+            try:
+                if msg.payload[0] == "{":
+                    pL_o = json.loads(msg.payload)  # decode json data
+
+                    o = {}
+                    o_1 = {}
+
+                    if self.my_hasattr_Idx(pL_o, 'StatusNET'):
+
+                        t_topic = self.conv_power_to_pulseTime(3, msg.topic)
+                        self._attrs['i'][t_topic].update({'IpAddress': pL_o['StatusNET']['IPAddress']})
+
+                    elif self.my_hasattr_Idx(pL_o, 'StatusSTS'):
+
+                        t_topic = self.conv_power_to_pulseTime(3, msg.topic)
+                        self._attrs['i'][t_topic].update({'SSId': pL_o['StatusSTS']['Wifi']['SSId'] + " (" + str(pL_o['StatusSTS']['Wifi']['RSSI']) + "%)"})
+                        self._attrs['i'][t_topic].update({'Uptime': pL_o['StatusSTS']['Uptime']})
+                        self._attrs['i'][t_topic].update({'Time': pL_o['StatusSTS']['Time']})
+
+                    elif self.my_hasattr_Idx(pL_o, 'Uptime'):
+
+                        t_topic = self.conv_power_to_pulseTime(3, msg.topic)
+                        self._attrs['i'][t_topic].update({'SSId': pL_o['Wifi']['SSId'] + " (" + str(pL_o['Wifi']['RSSI']) + "%)"})
+                        self._attrs['i'][t_topic].update({'Uptime': pL_o['Uptime']})
+                        self._attrs['i'][t_topic].update({'Time': pL_o['Time']})
+
+                    self.myasync_write_ha_state()
+
+            except Exception as e:
+                _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: " + str(e))
+
+        '''
+        --------------------------------------------------------------------------------------------------------------------------------------
+
+            Set listeners
+
+            Cannot use the same topic for multiple functions !!!
+
+        --------------------------------------------------------------------------------------------------------------------------------------
+        '''
+
+        add_subscription(topics, self._config.get(CONF_STATE_TOPIC), state_message_zone)
+        add_subscription(topics, self._switch["state_pulse_time"], state_message_pulsetime)
+
+        for item in self._switch["state_info"]:
+            add_subscription(topics, item, state_message_info)
+
+        self._sub_state = await subscription.async_subscribe_topics(self.hass, self._sub_state, topics)
 
 
     async def async_will_remove_from_hass(self):
@@ -399,10 +494,6 @@ class Au190_MqttSwitch(
         """Return true if we do optimistic updates."""
         return self._optimistic
 
-    @property
-    def unique_id(self):
-        """Return a unique ID."""
-        return self._unique_id
 
     @property
     def icon(self):
@@ -425,68 +516,44 @@ class Au190_MqttSwitch(
             new_pulseTime = kwargs['duration']
             _LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s][%s] [%s]", self._pulseTime, new_pulseTime, kwargs)
 
-        #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s][%s] [%s]", self._pulseTime, new_pulseTime, (self._pulseTime != new_pulseTime))
+        _LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s][%s] [%s]", self._pulseTime, new_pulseTime, (self._pulseTime != new_pulseTime))
 
         if (self._pulseTime != new_pulseTime):
 
-            self._publish(CONF_CMND_PULSE_TIME, new_pulseTime)
+            self._publish(self._switch["command_pulse_time"], new_pulseTime)
 
         else:
 
             #Just turn ON
-            self._publish(CONF_COMMAND_TOPIC, self._config[CONF_PAYLOAD_ON])
+            self._publish(self._config[CONF_COMMAND_TOPIC], self._config[CONF_PAYLOAD_ON])
 
             if self._optimistic:
                 # Optimistically assume that switch has changed state.
                 self._state = True
-                self.async_write_ha_state()
+                self.myasync_write_ha_state()
 
     async def async_turn_off(self, **kwargs):
-        """Turn the device off.
-
-        This method is a coroutine.
+        """
+            Turn the device off.
+            This method is a coroutine.
         """
 
-        self._publish(CONF_COMMAND_TOPIC, self._config[CONF_PAYLOAD_OFF])
+        self._publish(self._config[CONF_COMMAND_TOPIC], self._config[CONF_PAYLOAD_OFF])
 
         if self._optimistic:
             # Optimistically assume that switch has changed state.
             self._state = False
-            self.async_write_ha_state()
+            self.myasync_write_ha_state()
 
 
     def _publish(self, topic, payload):
-        if self._topic[topic] is not None:
-            mqtt.async_publish(
-                self.hass,
-                self._topic[topic],
-                payload,
-                self._config[CONF_QOS],
-                self._config[CONF_RETAIN],
-            )
-
-    async def _reqInfo(self, data):
-        #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> %s", self.entity_id)
-        self._publish(CONF_CMND_INFO, 0)
-
-    '''
-        1.  Get data from client
-        2.  Save to file
-        3.  Load data from file
-        4.  Update the attributes local var
-        5.  Sends back to client the new variable and updates the client
-        6.  Updates the 
-    '''
-    async def async_set_attributes(self, data):
-        """ ."""
-        try:
-            #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s]", data)
-            await self._save_to_file(data["au190"])
-            await self._load_from_file()
-            self.async_write_ha_state()
-
-        except Exception as e:
-            _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: " + str(e))
+        mqtt.async_publish(
+            self.hass,
+            topic,
+            payload,
+            self._config[CONF_QOS],
+            self._config[CONF_RETAIN],
+        )
 
     async def _async_wake_up(self, acction_time):
         try:
@@ -512,25 +579,9 @@ class Au190_MqttSwitch(
         except Exception as e:
             _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: " + str(e))
 
-    async def _async_T1(self, acction_time):
-        try:
-            _LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s][%s]", self.entity_id, acction_time)
-
-        except Exception as e:
-            _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: " + str(e))
-
-    async def _async_T2(self, acction_time):
-        try:
-            _LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s][%s]", self.entity_id, acction_time)
-
-            await self._async_wake_up(self, acction_time)
-
-        except Exception as e:
-            _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: " + str(e))
-
     '''
       
-        {"au190": {"type": 1, 
+        {"au190": {
         "status": [], 
         "enable_countDown": true, 
         "countDown": 20, 
@@ -560,27 +611,6 @@ class Au190_MqttSwitch(
 
                     fc_listener = async_track_time_change(self.hass, self._async_wake_up, hour=x.tm_hour, minute=x.tm_min, second=0)
                     self._scheduler_fc.append(fc_listener)
-
-                    #--- Test
-
-                   #@callback
-                   #def time_automation_listener(acction_time):
-                   #    """Call action with right context."""
-                   #    _LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> %s", acction_time)
-                   #    self.hass.async_run_job(self._async_wake_up, {"trigger": {"platform": "time", "acction_time": acction_time}})
-
-                   #remove_listener = async_track_time_change(self.hass, time_automation_listener, hour=x.tm_hour, minute=x.tm_min, second=0)
-                   #self._scheduler_fc.append(remove_listener)
-
-
-                   #fc_listener = async_track_time_change(self.hass, self._async_T1, hour=x.tm_hour, minute=x.tm_min, second=0)
-                   #self._scheduler_fc.append(fc_listener)
-
-                    # --- Test
-
-
-                    # fc_listener()
-                    #_LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> %s", fc_listener)
 
         except Exception as e:
             _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: " + str(e))
@@ -656,6 +686,15 @@ class Au190_MqttSwitch(
             return False
         return ret
 
+    '''
+       Force HA to send the status msg 
+       
+       must be: FMT = '%Y-%m-%dT%H:%M:%S.%f'
+    '''
+    def myasync_write_ha_state(self):
+        FMT = '%Y-%m-%dT%H:%M:%S.%f'
+        self._attrs["Time"] = datetime.datetime.now().strftime(FMT)
+        self.async_write_ha_state()
 
     '''
         Tasmota time 0 - infinite
@@ -669,3 +708,112 @@ class Au190_MqttSwitch(
         if duration == 0:
             duration = 1
         return duration
+
+    '''
+        Create PulseTime msg form Power msg
+
+        fc = 1 
+            Needs to identify the Pulstime response
+            "stat/basic/POWER1" -> "'stat/basic/RESULT/PulseTime1'"
+            "stat/basic/POWER2" -> "stat/basic/RESULT/PulseTime2"
+
+            "stat/basic/POWER" -> "stat/basic/RESULT/PulseTime1" 
+        fc = 2
+            "stat/basic/POWER1" -> "'stat/basic/PulseTime1'"
+            "stat/basic/POWER2" -> "stat/basic/PulseTime2"
+
+            "stat/basic/POWER" -> "stat/basic/PulseTime1"
+
+        fc = 3 
+            Get the topic from msg
+
+            "stat/basic/POWER" -> "stat/basic/PulseTime1"
+
+            return basic
+
+    '''
+
+    def conv_power_to_pulseTime(self, fc, msg):
+        try:
+            ret = None
+            if fc == 1:
+
+                tidx = msg.rfind("POWER") + 5
+                if len(msg) == tidx:  # if "stat/basic/POWER" -> "stat/basic/PulseTime1"
+                    ret = msg.replace("POWER", "PulseTime1")
+                else:
+                    ret = msg.replace("POWER", "PulseTime")
+
+                tidx = ret.rfind("/")
+                ret = ret[0:tidx] + '/RESULT' + ret[tidx:]
+
+            elif fc == 2:
+
+                tidx = msg.rfind("POWER") + 5
+                if len(msg) == tidx:  # if "stat/basic/POWER" -> "stat/basic/PulseTime1"
+                    ret = msg.replace("POWER", "PulseTime1")
+                else:
+                    ret = msg.replace("POWER", "PulseTime")
+
+                # tidx = ret.rfind("/")
+                # ret = ret[0:tidx] + '/RESULT' + ret[tidx:]
+
+            # _LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> %s - %s", msg, ret)
+
+            elif fc == 3:
+                v = msg.split('/')
+                if len(v) == 3:
+                    ret = v[1]
+
+            return ret;
+        except Exception as e:
+            _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: " + str(e))
+
+
+    async def async_au190(self, **kwargs):
+        """
+            Turn the device on.
+            This method is a coroutine.
+        """
+        try:
+            _LOGGER.debug("[" + sys._getframe().f_code.co_name + "]--> [%s]", kwargs)
+            fc = int(kwargs["fc"])
+
+            if (fc == 1):
+                '''
+                    Toggle
+                    
+                '''
+
+                if self._state == True :
+                    await self.async_turn_off()
+                else:
+                    await self.async_turn_on()
+
+            elif (fc == 2):
+                '''
+                    Save data to server  - what we have in the au190 obj will be saved
+                    
+                    1.  Get data from client
+                    2.  Save to file
+                    3.  Load data from file
+                    4.  Update the attributes local var
+                    5.  Sends back to client the new variable and updates the client
+                    
+                '''
+                await self._save_to_file(kwargs["au190"])
+                await self._load_from_file()
+                self.myasync_write_ha_state()
+
+            elif (fc == 3):
+                '''
+                    Request info
+
+                '''
+                self._publish(self._switch["command_info"], 0)
+                self.myasync_write_ha_state()
+
+
+
+        except Exception as e:
+            _LOGGER.error("[" + sys._getframe().f_code.co_name + "] Exception: " + str(e))

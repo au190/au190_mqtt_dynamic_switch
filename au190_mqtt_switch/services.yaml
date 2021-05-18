@@ -1,19 +1,7 @@
 # Describes the format for available switch services
-set_attr:
-  description: Toggles a switch state.
-  fields:
-    entity_id:
-      description: Name of entity.
-      example: 'switch.living_room'
-    start_time:
-      description: Time to start, in local time, in the 24-hour format "HH:MM"
-      example: "20:00:00"
-    duration:
-      description: How long it will run, 24-hour format "HH:MM".
-      example: "01:02"
 
-get_info:
-  description: Request Mqtt info.
+au190_fc:
+  description: Implementing the Smart MQTT switch
   fields:
     entity_id:
       description: Name of entity.

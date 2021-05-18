@@ -12,8 +12,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "au190_mqtt_switch"
 DATA_SERVICE_EVENT = "au190_service_idle"
-SERVICE_ATTRIBUTES = "set_attr"
-SERVICE_GET_INFO = "get_info"
+SERVICE_AU190= "au190_fc"
 
 
 ATTR_COUNT_DOWN = "countDown"
@@ -49,8 +48,7 @@ async def async_setup(hass, config):
         await hass.data[DATA_SERVICE_EVENT].wait()
 
     # hass.services.async_register(DOMAIN, SERVICE_ATTRIBUTES, service_handle, schema=SONOS_JOIN_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_ATTRIBUTES, service_handle)
-    hass.services.async_register(DOMAIN, SERVICE_GET_INFO, service_handle)
+    hass.services.async_register(DOMAIN, SERVICE_AU190, service_handle)
 
     return True
 
