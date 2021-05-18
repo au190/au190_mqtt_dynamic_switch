@@ -18,14 +18,13 @@ Count Down timer can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
 
 
 ### Scheduler
-```
 Start time: Can be set only hours and minutes.
 Duration: Can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
-```
+
 
 
 #### Info
-```
+
 - [ ] ⚠️ The output will be ON only the time what is in configuraiton, even if the Ha is crashing druring the output is ON, or even if the Wifi router is crashing druring the output is ON.
 - [ ] ⚠️ Working only with MQTT
 - [ ] ⚠️ Working only with Tasmota(https://github.com/arendst/Tasmota) software.
@@ -34,7 +33,7 @@ Tested:
 Home Assistant version: 0.105.1
 Tasmota v7.1.2
 Python_version	3.7.5
-```
+
 
 
 #### Installation
