@@ -12,7 +12,6 @@ Lovelace UI:<br />
 [![Watch the video](https://img.youtube.com/vi/D6Lkr_acK_s/0.jpg)](https://www.youtube.com/watch?v=D6Lkr_acK_s "Watch the video")
 
 ### Count Down
-``````
 This feauture can be: Enable|Disable
 Count Down timer can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
 
