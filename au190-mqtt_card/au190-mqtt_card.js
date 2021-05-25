@@ -463,7 +463,7 @@ class au190_MqttCard extends HTMLElement {
     }else{
       this.icon = 'mdi:power';
     }
-
+    
     card.innerHTML = `
       <div class='m_c'>
         <div class='m'>
@@ -475,7 +475,7 @@ class au190_MqttCard extends HTMLElement {
             </div>
             <div class='ct2'>
               <paper-icon-button id='i_1' class='off' icon=${'mdi:calendar-clock'}></paper-icon-button>
-              <p>22 percel ezelott</p>
+              <p id='i_2'></p>
             </div>
           </div>
           <div id='btn_st'></div>
@@ -598,6 +598,35 @@ class au190_MqttCard extends HTMLElement {
     return e
   }
   
+  last_ch(){
+    if (!this.stateObj.last_changed) {
+      return '';
+    }
+
+    const d1  = new Date();
+    const d2  = new Date(this.stateObj.last_changed);
+    var d3    = parseInt((d1 - d2) / (1000 * 60 * 60 * 24), 10);
+    if(d3 > 0){
+      d3 += ' day ago';
+      return d3;
+    }
+    d3    = parseInt((d1 - d2) / (1000 * 60 * 60), 10);
+    if(d3 > 0){
+      d3 += ' hours ago';
+      return d3;
+    }
+    d3    = parseInt((d1 - d2) / (1000 * 60), 10);
+    if(d3 > 0){
+      d3 += ' minutes ago';
+      return d3;
+    }
+    d3    = parseInt((d1 - d2) / (1000 * 60), 10);
+    if(d3 >= 0){
+      d3 += ' seconds ago';
+    }
+    return d3;
+  }
+
   /*******************************************************
 
     Card fc
@@ -614,7 +643,7 @@ class au190_MqttCard extends HTMLElement {
     el.innerHTML = this.name;
     
     el = root.getElementById('btn');
-    
+
     if(this.stateObj.state == 'unavailable'){
       
       el = root.getElementById('btn_st');
@@ -622,6 +651,8 @@ class au190_MqttCard extends HTMLElement {
 			
 			el = root.getElementById('ov_st');
 			el.innerHTML = ``;
+      
+      root.getElementById('i_2').innerHTML = this.last_ch();
       
     }else{
 
@@ -638,6 +669,8 @@ class au190_MqttCard extends HTMLElement {
       el = root.getElementById('i_1');
       el.removeAttribute('class');
       el.classList.add(this.stateObj.attributes.au190.enable_scheduler);
+      
+      root.getElementById('i_2').innerHTML = this.last_ch();
       
     }
 
