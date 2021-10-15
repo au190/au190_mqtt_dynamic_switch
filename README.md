@@ -30,9 +30,10 @@ Duration: Can be set from (1 sec - 18 hours). Setting to 0 = 0,1 sec
 - [ ] ⚠️ Working only with Tasmota(https://github.com/arendst/Tasmota) software.
 ```
 Tested:
-Home Assistant version: 0.105.1
+Tested:
+Home Assistant version: 2021.9.7
+Python_version	3.9.7
 Tasmota v7.1.2
-Python_version	3.7.5
 ```
 
 
