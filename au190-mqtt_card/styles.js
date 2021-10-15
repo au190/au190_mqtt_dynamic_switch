@@ -303,8 +303,8 @@ opacity: 0;
 #overlay 
 {
 position: absolute;
-right: -24px;
-top: 26px;
+right: -36px;
+top: 34px;
 width: 48px;
 height: 48px;
 transform: translate(-50%, -50%);
@@ -312,6 +312,7 @@ text-align: center;
 z-index: 1;
 transition: opacity 1s; 
 cursor: pointer;
+color: #808080;
 }
 
 #ov_st
