@@ -120,73 +120,76 @@ function _cfc(f, d){
   
 *******************************************************/
 function _evC(o){
+  try{
+    
+    if(o.entity_id != au190.o.stateObj.entity_id){
+      return;
+    }
+    //console.log('--> _evC: ' + o.entity_id);
+    
+    document.getElementById('dlg_btn').removeAttribute('class');
+    var el = document.getElementById('dlg_btn');
+    el.classList.add('ck');
+    el.classList.add('bbtn');
+    el.classList.add(o.state);
+    
+    document.getElementById('en_countDown').removeAttribute('class');
+    el = document.getElementById('en_countDown');
+    el.classList.add('ck');
+    el.classList.add(o.attributes.au190.enable_countDown);
+
+    el = document.getElementById('countDown');
+    el.value = _cfc(1, o.attributes.au190.countDown);
+    
+    document.getElementById('en_scheduler').removeAttribute('class');
+    el = document.getElementById('en_scheduler');
+    el.classList.add('ck');
+    el.classList.add(o.attributes.au190.enable_scheduler);
+
+    document.getElementById('tab_scheduler').removeAttribute('class');
+    el = document.getElementById('tab_scheduler');
+    if(!o.attributes.au190.enable_scheduler){
+      el.classList.add('h_w');
+    }
+
+    el = document.getElementById('da_scheduler');
+    el.innerHTML = Object.keys(o.attributes.au190.scheduler).map(idx => 
+    `<div class="m">
+        <div class="t1"><input type="time" id="sht_${(parseInt(idx))}" class="ch_id" step="1" value='${o.attributes.au190.scheduler[idx].start_time}'></div>
+        <div class="t1"><input type="time" id="shd_${(parseInt(idx))}" class="ch_id" step="1" value='${_cfc(1, o.attributes.au190.scheduler[idx].duration)}'></div>
+        <ha-icon id="del_${(parseInt(idx))}" class="ck_id false" icon=${"mdi:delete"}></ha-icon>
+      </div>`
+     ).join('');
+
+    el = document.getElementById('inf');
+    el.innerHTML = Object.keys(o.attributes.i).map(idx => `
+      <div class='m2'>
+        <div class="t1">Topic:</div>
+        <div class="t5">${idx}</div>
+      </div>
+      <div class='m2'>
+        <div class="t1">IpAddress:</div>
+        <div class="t5"><a href="http://${o.attributes.i[idx].IpAddress}" target="_blank" class="flase">${o.attributes.i[idx].IpAddress}</a></div>
+      </div>
+      <div class='m2'>
+        <div class="t1">SSId:</div>
+        <div class="t5">${o.attributes.i[idx].SSId}</div>
+      </div>
+      <div class='m2'>
+        <div class="t1">Uptime:</div>
+        <div class="t5">${o.attributes.i[idx].Uptime}</div>
+      </div>
+      <div class='m2'>
+        <div class="t1">Time:</div>
+        <div class="t5">${o.attributes.i[idx].Time}</div>
+      </div>
+      <div class='m2'>
+        <div class="sep"></div>
+      </div>
+    `).join('');
+
+  }catch{}
   
-  if(o.entity_id != au190.o.stateObj.entity_id){
-    return;
-  }
-  //console.log('--> _evC: ' + o.entity_id);
-  
-  document.getElementById('dlg_btn').removeAttribute('class');
-  var el = document.getElementById('dlg_btn');
-  el.classList.add('ck');
-  el.classList.add('bbtn');
-  el.classList.add(o.state);
-  
-  document.getElementById('en_countDown').removeAttribute('class');
-  el = document.getElementById('en_countDown');
-  el.classList.add('ck');
-  el.classList.add(o.attributes.au190.enable_countDown);
-
-  el = document.getElementById('countDown');
-  el.value = _cfc(1, o.attributes.au190.countDown);
-  
-  document.getElementById('en_scheduler').removeAttribute('class');
-  el = document.getElementById('en_scheduler');
-  el.classList.add('ck');
-  el.classList.add(o.attributes.au190.enable_scheduler);
-
-  document.getElementById('tab_scheduler').removeAttribute('class');
-  el = document.getElementById('tab_scheduler');
-  if(!o.attributes.au190.enable_scheduler){
-    el.classList.add('h_w');
-  }
-
-  el = document.getElementById('da_scheduler');
-  el.innerHTML = Object.keys(o.attributes.au190.scheduler).map(idx => 
-  `<div class="m">
-      <div class="t1"><input type="time" id="sht_${(parseInt(idx))}" class="ch_id" step="1" value='${o.attributes.au190.scheduler[idx].start_time}'></div>
-      <div class="t1"><input type="time" id="shd_${(parseInt(idx))}" class="ch_id" step="1" value='${_cfc(1, o.attributes.au190.scheduler[idx].duration)}'></div>
-      <paper-icon-button id="del_${(parseInt(idx))}" class="ck_id false" icon=${"mdi:delete"}></paper-icon-button>
-    </div>`
-   ).join('');
-
-  el = document.getElementById('inf');
-  el.innerHTML = Object.keys(o.attributes.i).map(idx => `
-    <div class='m2'>
-      <div class="t1">Topic:</div>
-      <div class="t5">${idx}</div>
-    </div>
-    <div class='m2'>
-      <div class="t1">IpAddress:</div>
-      <div class="t5"><a href="http://${o.attributes.i[idx].IpAddress}" target="_blank" class="flase">${o.attributes.i[idx].IpAddress}</a></div>
-    </div>
-    <div class='m2'>
-      <div class="t1">SSId:</div>
-      <div class="t5">${o.attributes.i[idx].SSId}</div>
-    </div>
-    <div class='m2'>
-      <div class="t1">Uptime:</div>
-      <div class="t5">${o.attributes.i[idx].Uptime}</div>
-    </div>
-    <div class='m2'>
-      <div class="t1">Time:</div>
-      <div class="t5">${o.attributes.i[idx].Time}</div>
-    </div>
-    <div class='m2'>
-      <div class="sep"></div>
-    </div>
-  `).join('');
-
 }
 /*******************************************************
 
@@ -306,7 +309,7 @@ function _openProp(o, c){
     dlg.innerHTML = `
       <div class='mw'>
         <div class='menu1'>
-          <paper-icon-button icon='mdi:close' id='c_w' class='ck d_icon clickable' role='button' tabindex='0' aria-disabled='false'></paper-icon-button>
+          <ha-icon icon='mdi:close' id='c_w' class='ck d_icon clickable' role='button' tabindex='0' aria-disabled='false'></ha-icon>
           <div class='d_title'>${o.name}</div>
         </div>
         <div class='wr_dlg'>
@@ -330,12 +333,12 @@ function _openProp(o, c){
     dlg.innerHTML = `
       <div class='mw'>
         <div class='menu1'>
-          <paper-icon-button icon='mdi:close' id='c_w' class='ck d_icon clickable' role='button' tabindex='0' aria-disabled='false'></paper-icon-button>
+          <ha-icon icon='mdi:close' id='c_w' class='ck d_icon clickable' role='button' tabindex='0' aria-disabled='false'></ha-icon>
           <div class='d_title'>${o.name}</div>
         </div>
         <div class='wr_dlg'>
           <div class='dst'>
-            <paper-icon-button id='dlg_btn' class='ck bbtn ${o.stateObj.state}' icon=${o.icon}></paper-icon-button>
+            <ha-icon id='dlg_btn' class='ck bbtn ${o.stateObj.state}' icon=${o.icon}></ha-icon>
           </div>
           <div class='m'>
             <div class='sep'></div>
@@ -343,7 +346,7 @@ function _openProp(o, c){
           <div class='m1'>
             <div class='t3'><p>Count down:</p></div>
             <div class='t1'><input type='time' id='countDown' class='ch_id' step='1' value='${_cfc(1, o.stateObj.attributes.au190.countDown)}'></div>
-            <div class='t4'><paper-icon-button id='en_countDown' class='ck ${o.stateObj.attributes.au190.enable_countDown}' icon=${'mdi:power'}></paper-icon-button></div>
+            <div class='t4'><ha-icon id='en_countDown' class='ck ${o.stateObj.attributes.au190.enable_countDown}' icon=${'mdi:power'}></ha-icon></div>
           </div>
           <div class='m'>
             <div class='sep'></div>
@@ -351,7 +354,7 @@ function _openProp(o, c){
           <div class='m1'>
             <div class='t3'>Scheduler</div>
             <p></p>
-            <paper-icon-button id='en_scheduler' class='ck ${o.stateObj.attributes.au190.enable_scheduler}' icon=${'mdi:power'}></paper-icon-button>
+            <ha-icon id='en_scheduler' class='ck ${o.stateObj.attributes.au190.enable_scheduler}' icon=${'mdi:power'}></ha-icon>
           </div>
           <div id='tab_scheduler' class='${tab_2}'>
             <div class='m'>
@@ -363,7 +366,7 @@ function _openProp(o, c){
               <div class='m'>
                 <div class='t1'><input step='1' type='time' value='00:00' class='start_time'></div>
                 <div class='t1'><input step='1' type='time' value='00:01' class='duration'></div>
-                <paper-icon-button id='add_scheduler' class='ck g' icon=${'mdi:plus-box'}></paper-icon-button>
+                <ha-icon id='add_scheduler' class='ck g' icon=${'mdi:plus-box'}></ha-icon>
               </div>
             </div>
             <div id='da_scheduler'>
@@ -371,7 +374,7 @@ function _openProp(o, c){
               `<div class='m'>
                   <div class='t1'><input type='time' id='sht_${(parseInt(idx))}' class='ch_id' step='1' value='${o.stateObj.attributes.au190.scheduler[idx].start_time}'></div>
                   <div class='t1'><input type='time' id='shd_${(parseInt(idx))}' class='ch_id' step='1' value='${_cfc(1, o.stateObj.attributes.au190.scheduler[idx].duration)}'></div>
-                  <paper-icon-button id='del_${(parseInt(idx))}' class='ck_id false' icon=${'mdi:delete'}></paper-icon-button>
+                  <ha-icon id='del_${(parseInt(idx))}' class='ck_id false' icon=${'mdi:delete'}></ha-icon>
                 </div>`
                ).join('')}
             </div>
@@ -382,7 +385,7 @@ function _openProp(o, c){
           <div class='m1'>
             <div class='t3'>Info</div>
             <div></div>
-            <paper-icon-button id='btn_i' class='ck false' icon=${'mdi:refresh'}></paper-icon-button>
+            <ha-icon id='btn_i' class='ck false' icon=${'mdi:refresh'}></ha-icon>
           </div>
           <div id='inf'>
             ${Object.keys(o.stateObj.attributes.i).map(idx => `
@@ -467,14 +470,14 @@ class au190_MqttCard extends HTMLElement {
     card.innerHTML = `
       <div class='m_c'>
         <div class='m'>
-          <paper-icon-button id='m_1' class='off c_icon' icon='mdi:dots-vertical'></paper-icon-button>
+          <ha-icon id='m_1' class='off c_icon' icon='mdi:dots-vertical'></ha-icon>
           <div id='pop1' class='ct0'>
             <div class='ct1'>
-              <paper-icon-button id='i_0' class='off' icon=${'mdi:timer'}></paper-icon-button>
+              <ha-icon id='i_0' class='off' icon=${'mdi:timer'}></ha-icon>
               <p id='cname'>${this.name}</p>
             </div>
             <div class='ct2'>
-              <paper-icon-button id='i_1' class='off' icon=${'mdi:calendar-clock'}></paper-icon-button>
+              <ha-icon id='i_1' class='off' icon=${'mdi:calendar-clock'}></ha-icon>
               <p id='i_2'></p>
             </div>
           </div>
@@ -518,6 +521,7 @@ class au190_MqttCard extends HTMLElement {
     }
     
     this._updateButtons(root, config);
+    //console.log(this.stateObj);
   }
 
   _isChanged(){
@@ -637,43 +641,42 @@ class au190_MqttCard extends HTMLElement {
     
     try{
       _evC(this.stateObj);
+      
+      var el  = root.getElementById('cname');
+      el.innerHTML = this.name;
+      
+      el = root.getElementById('btn');
+
+      if(this.stateObj.state == 'unavailable'){
+        
+        el = root.getElementById('btn_st');
+        el.innerHTML = `Unavailable`;
+        
+        el = root.getElementById('ov_st');
+        el.innerHTML = ``;
+        
+        root.getElementById('i_2').innerHTML = this.last_ch();
+        
+      }else{
+
+        this._evbtns(root, config);
+        
+        el.removeAttribute('class');
+        el.classList.add('c_btn');
+        el.classList.add(this.stateObj.state);
+
+        el = root.getElementById('i_0');
+        el.removeAttribute('class');
+        el.classList.add(this.stateObj.attributes.au190.enable_countDown);
+        
+        el = root.getElementById('i_1');
+        el.removeAttribute('class');
+        el.classList.add(this.stateObj.attributes.au190.enable_scheduler);
+        
+        root.getElementById('i_2').innerHTML = this.last_ch();
+        
+      }
     }catch{}
-    
-    var el  = root.getElementById('cname');
-    el.innerHTML = this.name;
-    
-    el = root.getElementById('btn');
-
-    if(this.stateObj.state == 'unavailable'){
-      
-      el = root.getElementById('btn_st');
-      el.innerHTML = `Unavailable`;
-			
-			el = root.getElementById('ov_st');
-			el.innerHTML = ``;
-      
-      root.getElementById('i_2').innerHTML = this.last_ch();
-      
-    }else{
-
-      this._evbtns(root, config);
-      
-      el.removeAttribute('class');
-      el.classList.add('c_btn');
-      el.classList.add(this.stateObj.state);
-
-      el = root.getElementById('i_0');
-      el.removeAttribute('class');
-      el.classList.add(this.stateObj.attributes.au190.enable_countDown);
-      
-      el = root.getElementById('i_1');
-      el.removeAttribute('class');
-      el.classList.add(this.stateObj.attributes.au190.enable_scheduler);
-      
-      root.getElementById('i_2').innerHTML = this.last_ch();
-      
-    }
-
   }
   
   _evbtns(root, config){
@@ -683,7 +686,7 @@ class au190_MqttCard extends HTMLElement {
     if(el == null){
       
       el = root.getElementById('btn_st');
-      el.innerHTML = `<paper-icon-button id='btn' class='c_btn off' icon=${this.icon}></paper-icon-button>`;
+      el.innerHTML = `<ha-icon id='btn' class='c_btn off' icon=${this.icon}></ha-icon>`;
       el = root.getElementById('btn');
       el.addEventListener('click', (e) => this._au190fc(1));
 

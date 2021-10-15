@@ -142,7 +142,7 @@ justify-content: space-around;
 padding: 8px 16px;
 }
   
-button 
+button
 {
 display: inline-block;
 max-width: 125px;
@@ -156,6 +156,7 @@ border-image: initial;
 background-color: var(--lovelace-background);
 font-family: var(--ha-card-header-font-family, inherit);
 font-size: var(--ha-card-header-font-size, 18px);
+cursor: pointer;
 }
 
 button:focus
@@ -205,16 +206,19 @@ width: 20px;
 {
 color: var(--primary-color);
 font-weight: bold;
+cursor: pointer;
 }
 
 .off,.OFF,.false
 {
 color: #808080;
+cursor: pointer;
 }
 
 .g
 {
 color: green;
+cursor: pointer;
 }
 
 .error
