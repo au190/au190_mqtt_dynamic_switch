@@ -142,7 +142,7 @@ justify-content: space-around;
 padding: 8px 16px;
 }
   
-button
+button 
 {
 display: inline-block;
 max-width: 125px;
@@ -156,7 +156,6 @@ border-image: initial;
 background-color: var(--lovelace-background);
 font-family: var(--ha-card-header-font-family, inherit);
 font-size: var(--ha-card-header-font-size, 18px);
-cursor: pointer;
 }
 
 button:focus
@@ -206,19 +205,16 @@ width: 20px;
 {
 color: var(--primary-color);
 font-weight: bold;
-cursor: pointer;
 }
 
 .off,.OFF,.false
 {
 color: #808080;
-cursor: pointer;
 }
 
 .g
 {
 color: green;
-cursor: pointer;
 }
 
 .error
@@ -289,9 +285,9 @@ margin-inline-end: 0px;
 {
 display: inline-block;
 width: 47px;
-height: 40px;
 outline: none;
 margin: 0px;
+text-align: center;
 }
 /*Lock icon*/
 
@@ -303,16 +299,15 @@ opacity: 0;
 #overlay 
 {
 position: absolute;
-right: -36px;
-top: 34px;
-width: 48px;
+left: 20px;
+top: 10px;
+width: 444px;
 height: 48px;
-transform: translate(-50%, -50%);
-text-align: center;
+transform: translate(0%, 0%);
+text-align: left;
 z-index: 1;
-transition: opacity 1s; 
+transition: opacity 1s;
 cursor: pointer;
-color: #808080;
 }
 
 #ov_st
@@ -341,7 +336,6 @@ cursor: default;
 
 
 
-
 @media (max-width: 580px)
 {
 .mw
@@ -361,7 +355,9 @@ color: #808080;
 outline: none;
 }
 }
-  
+
+
+
 `
 return css;
 }

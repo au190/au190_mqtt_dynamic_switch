@@ -13,8 +13,6 @@ type: 'custom:au190-mqtt_card'
 
 import {cssData} from './styles.js?v=0.1.1';
 
-
-
 var au190   = {};
 /*******************************************************
 
@@ -692,7 +690,7 @@ class au190_MqttCard extends HTMLElement {
 
       if(config.lock){
         el = root.getElementById('ov_st');
-        el.innerHTML = `<div id='overlay'><ha-icon id='lock' class='lbtn' icon='mdi:lock-outline'></ha-icon></div>`;
+        el.innerHTML = `<div id='overlay'><ha-icon id='lock' class='lbtn off' icon='mdi:lock-outline'></ha-icon></div>`;
           
         var el1 = root.getElementById('lock');
         el = root.getElementById('overlay');
